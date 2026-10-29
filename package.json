@@ -1,0 +1,17 @@
+{
+  "name": "stand-in",
+  "private": true,
+  "packageManager": "bun@1.2.23",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "setup": "bun scripts/setup.ts"
+  },
+  "devDependencies": {
+    "bun": "1.4.4",
+    "typescript": "^6.0.0"
+  }
+}

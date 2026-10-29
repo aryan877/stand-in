@@ -1,0 +1,9 @@
+node_modules
+.turbo
+.env
+.env.*
+!.env.example
+dist
+build
+.output
+.DS_Store
