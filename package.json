@@ -6,12 +6,16 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "turbo run dev",
     "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "setup": "bun scripts/setup.ts"
+    "setup": "bun scripts/setup.ts",
+    "start": "cd apps/web && bun run start"
   },
   "devDependencies": {
     "bun": "1.4.4",
+    "turbo": "2.11.10",
     "typescript": "^6.0.0"
   }
 }
