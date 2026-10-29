@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Stand-in",
+  "version": "0.1.0",
+  "description": "Attends Google Meet calls for you, within limits you set.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms",
+    "power"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "http://localhost:3210/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "meet.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "http://localhost:3210/*"
+      ],
+      "js": [
+        "app.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
