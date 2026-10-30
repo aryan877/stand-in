@@ -1,0 +1,20 @@
+{
+  "name": "Stand-in",
+  "short_name": "Stand-in",
+  "description": "An AI that attends your Google Meet when you can't.",
+  "start_url": "./meetings",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
