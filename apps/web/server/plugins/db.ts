@@ -111,3 +111,7 @@ const MIGRATIONS = [
   },
 ];
 
+export default runMigrations(
+  MIGRATIONS.map((migration, index) => ({ version: index + 1, ...migration })),
+  { table: "stand_in_migrations" },
+);
