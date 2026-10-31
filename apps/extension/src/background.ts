@@ -69,3 +69,120 @@ const appOrigins = () =>
     .filter((pattern) => !pattern.includes("meet.google.com"))
     .map((pattern) => new URL(pattern.replace(/\*$/, "")).origin);
 
+type DueMeetings = {
+  due: { id: string; meetUrl: string }[];
+  nextStartsAt: string | null;
+};
+
+async function joinDueMeetings() {
+  let keepAwake = false;
+  for (const origin of appOrigins()) {
+    const response = await fetch(
+      `${origin}/_agent-native/actions/due-meetings`,
+      {
+        credentials: "include",
+      },
+    ).catch(() => null);
+    if (!response?.ok) continue;
+    const { due, nextStartsAt } = (await response.json()) as DueMeetings;
+    for (const meeting of due) {
+      if (isMeetLink(meeting.meetUrl)) {
+        await openMeeting(origin, meeting.id, meeting.meetUrl, {
+          focusExisting: false,
+        });
+      }
+    }
+    if (
+      due.length ||
+      (nextStartsAt && Date.parse(nextStartsAt) - Date.now() < KEEP_AWAKE_MS)
+    ) {
+      keepAwake = true;
+    }
+  }
+  const sessions = await chrome.storage.session.get(null);
+  if (Object.keys(sessions).some((key) => key.startsWith(TAB_PREFIX)))
+    keepAwake = true;
+  if (keepAwake) chrome.power.requestKeepAwake("display");
+  else chrome.power.releaseKeepAwake();
+}
+
+async function callAction(
+  session: TabSession,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<ActionResult> {
+  if (!MEET_TAB_ACTIONS.has(name)) {
+    return { ok: false, status: 403, error: `${name} isn't allowed` };
+  }
+  if ((args.id ?? args.meetingId) !== session.meetingId) {
+    return { ok: false, status: 403, error: "Wrong meeting" };
+  }
+  try {
+    const response = await fetch(
+      `${session.origin}/_agent-native/actions/${name}`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      },
+    );
+    if (!response.ok) {
+      return { ok: false, status: response.status, error: `${name} failed` };
+    }
+    return { ok: true, data: await response.json() };
+  } catch (error) {
+    return { ok: false, status: 0, error: String(error) };
+  }
+}
+
+async function handle(
+  message: RuntimeMessage,
+  sender: chrome.runtime.MessageSender,
+) {
+  const tabId = sender.tab?.id;
+  switch (message.type) {
+    case "open-meeting":
+      if (sender.origin && isMeetLink(message.meetUrl)) {
+        await openMeeting(sender.origin, message.meetingId, message.meetUrl, {
+          focusExisting: true,
+        });
+      }
+      return null;
+    case "session": {
+      const session = await sessionFor(tabId);
+      return session && { meetingId: session.meetingId };
+    }
+    case "end-session":
+      if (tabId === undefined) return null;
+      await chrome.storage.session.remove(tabKey(tabId));
+      if (message.closeTab) await chrome.tabs.remove(tabId);
+      return null;
+    case "action": {
+      const session = await sessionFor(tabId);
+      if (!session)
+        return { ok: false, status: 403, error: "Not a Stand-in tab" };
+      return callAction(session, message.name, message.args);
+    }
+  }
+}
+
+chrome.runtime.onMessage.addListener(
+  (message: RuntimeMessage, sender, respond) => {
+    void handle(message, sender).then(respond);
+    return true;
+  },
+);
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void chrome.storage.session.remove(tabKey(tabId));
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === CHECK_ALARM) void joinDueMeetings();
+});
+
+void chrome.alarms.create(CHECK_ALARM, {
+  periodInMinutes: CHECK_EVERY_MINUTES,
+});
+void joinDueMeetings();
