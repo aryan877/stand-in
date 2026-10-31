@@ -12,3 +12,20 @@ export type ActionResult =
   | { ok: true; data: unknown }
   | { ok: false; status: number; error: string };
 
+export type PageBody =
+  | { type: "enable" }
+  | { type: "disable" }
+  | { type: "say"; audioBase64: string; id: string }
+  | { type: "said"; id: string; ok: boolean };
+
+export type PageMessage = { channel: typeof PAGE_CHANNEL } & PageBody;
+
+export const pageMessage = (body: PageBody): PageMessage => ({
+  channel: PAGE_CHANNEL,
+  ...body,
+});
+
+export const isPageMessage = (
+  event: MessageEvent,
+): event is MessageEvent<PageMessage> =>
+  event.source === window && event.data?.channel === PAGE_CHANNEL;
