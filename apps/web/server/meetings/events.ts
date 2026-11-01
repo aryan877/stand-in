@@ -17,3 +17,14 @@ registerEvent({
   example: { meetingId: "meeting-id", title: "Launch sync", ownerName: "Maya" },
 });
 
+export function emitMeetingEnded(meeting: Meeting) {
+  emit(
+    MEETING_ENDED,
+    {
+      meetingId: meeting.id,
+      title: meeting.title,
+      ownerName: meeting.ownerName,
+    },
+    { owner: meeting.ownerEmail },
+  );
+}
