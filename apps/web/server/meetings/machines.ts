@@ -13,3 +13,16 @@ export const meetingMachine = defineMachine({
   },
 });
 
+export const actionItemMachine = defineMachine({
+  id: "action-item",
+  states: ACTION_ITEM_STATES,
+  initial: "proposed",
+  terminal: [],
+  transitions: {
+    approve: { from: ["proposed", "dismissed"], to: "approved" },
+    dismiss: { from: ["proposed", "approved"], to: "dismissed" },
+    reopen: { from: ["approved", "dismissed"], to: "proposed" },
+  },
+});
+
+export type ActionItemEvent = (typeof actionItemMachine.events)[number];
