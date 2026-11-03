@@ -26,3 +26,34 @@ export function chatModel() {
   }).chat(MODEL);
 }
 
+const withHeaders: typeof fetch = (input, init) =>
+  fetch(input, {
+    ...init,
+    headers: { ...Object.fromEntries(new Headers(init?.headers)), ...HEADERS },
+  });
+
+export function registerOpenCodeEngine() {
+  const openAi = getAgentEngineEntry("ai-sdk:openai");
+  if (!openAi || !apiKey()) return;
+  registerAgentEngine({
+    name: ENGINE_NAME,
+    label: "OpenCode Go",
+    description: "Your OpenCode Go subscription.",
+    capabilities: openAi.capabilities,
+    defaultModel: MODEL,
+    supportedModels: [MODEL],
+    requiredEnvVars: [API_KEY_ENV],
+    create: (config) =>
+      createAISDKEngine("openai", {
+        name: ENGINE_NAME,
+        label: "OpenCode Go",
+        model: typeof config.model === "string" ? config.model : MODEL,
+        supportedModels: [MODEL],
+        capabilities: openAi.capabilities,
+        apiKey: apiKey(),
+        allowEnvFallback: false,
+        baseUrl: BASE_URL,
+        requestFetch: withHeaders,
+      }),
+  });
+}
