@@ -35,3 +35,26 @@ export async function searchConversationReferences(
   }));
 }
 
+export async function validateConversationReferences(
+  references: readonly AgentChatReference[],
+) {
+  for (const reference of references) {
+    if (reference.type !== "mention" || reference.refType !== "chat") continue;
+    if (!reference.refId)
+      throw createError({
+        statusCode: 400,
+        statusMessage: (await composerReferenceMessages()).invalid,
+      });
+    try {
+      await assertAccess("chat_thread", reference.refId, "viewer", undefined, {
+        skipResourceBody: true,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenError)
+        throw new ForbiddenError(
+          (await composerReferenceMessages()).unavailable,
+        );
+      throw error;
+    }
+  }
+}
