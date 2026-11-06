@@ -11,3 +11,10 @@ const components: ToolkitComponents = {
   Button: Button as NonNullable<ToolkitComponents["Button"]>,
 };
 
+export function AppToolkitProvider({ children }: { children: ReactNode }) {
+  return (
+    <ToolkitProvider components={components} designSystem={designSystem}>
+      {children}
+    </ToolkitProvider>
+  );
+}
