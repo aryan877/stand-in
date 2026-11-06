@@ -7,3 +7,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { designSystem } from "@/design-system";
 
+const components: ToolkitComponents = {
+  Button: Button as NonNullable<ToolkitComponents["Button"]>,
+};
+
