@@ -73,3 +73,128 @@ export function Layout({ children }: LayoutProps) {
   );
 }
 
+function LayoutShell({ children }: LayoutProps) {
+  const location = useLocation();
+  const t = useT();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isChatRoute = isChatPathname(location.pathname);
+  const chatHomeHandoffActive = useAgentChatHomeHandoff({
+    storageKey: "chat",
+    activePath: location.pathname,
+    enabled: !isChatRoute,
+  });
+  const chatHomeHandoffPending = isAgentChatHomeHandoffActive("chat");
+  useAgentChatHomeHandoffLinks({
+    storageKey: "chat",
+    isChatPath: isChatPathname,
+    requireActiveHandoff: true,
+  });
+
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const closeMobileSidebar = () => setMobileSidebarOpen(false);
+    window.addEventListener("agent-chat:open-thread", closeMobileSidebar);
+    return () => {
+      window.removeEventListener("agent-chat:open-thread", closeMobileSidebar);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
+      if (stored !== null) setSidebarCollapsed(stored === "1");
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_COLLAPSE_KEY,
+        sidebarCollapsed ? "1" : "0",
+      );
+    } catch {}
+  }, [sidebarCollapsed]);
+
+  const pageTitle = useHeaderTitle();
+  const pageActions = useHeaderActions();
+  const chatHeaderInAppBar =
+    isChatRoute && (pageTitle != null || pageActions != null);
+  const openMobileSidebar = () => setMobileSidebarOpen(true);
+  const ownsToolbar = routeOwnsToolbar(location.pathname);
+  const contentFrame = (
+    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+      {isChatRoute ? (
+        <MobileAppBar
+          className="md:hidden"
+          onOpenNavigation={openMobileSidebar}
+          title={pageTitle ?? APP_TITLE}
+          actions={pageActions}
+        />
+      ) : ownsToolbar ? (
+        <MobileAppBar
+          className="md:hidden"
+          onOpenNavigation={openMobileSidebar}
+        />
+      ) : (
+        <Suspense fallback={<div className="h-12 shrink-0" />}>
+          <Header onOpenMobileSidebar={openMobileSidebar} />
+        </Suspense>
+      )}
+      <main className="agent-native-app-main min-w-0 flex-1 overflow-y-auto overscroll-contain">
+        {children}
+      </main>
+    </div>
+  );
+
+  return (
+    <HeaderActionsProvider>
+      <div className="agent-layout-shell chat-layout-shell flex h-screen w-full overflow-hidden bg-background text-foreground">
+        <div
+          data-collapsed={sidebarCollapsed ? "true" : "false"}
+          className="agent-layout-left-drawer hidden md:block"
+        >
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onCollapsedChange={setSidebarCollapsed}
+          />
+        </div>
+        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+          <SheetContent
+            side="left"
+            className="w-[var(--chat-sidebar-width)] p-0"
+          >
+            <SheetTitle className="sr-only">
+              {t("navigation.navigation")}
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              {t("navigation.navigationDescription")}
+            </SheetDescription>
+            <Sidebar collapsed={false} collapsible={false} />
+          </SheetContent>
+        </Sheet>
+        {isChatRoute ? (
+          <div
+            data-agent-chat-canvas="true"
+            data-chat-header-in-app-bar={
+              chatHeaderInAppBar ? "true" : undefined
+            }
+            className="agent-layout-main-surface flex min-w-0 flex-1 overflow-hidden"
+          >
+            {contentFrame}
+          </div>
+        ) : (
+          <AgentInspector
+            chatHomeHandoffActive={chatHomeHandoffActive}
+            chatHomeHandoffPending={chatHomeHandoffPending}
+          >
+            {contentFrame}
+          </AgentInspector>
+        )}
+      </div>
+    </HeaderActionsProvider>
+  );
+}

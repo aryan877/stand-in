@@ -179,3 +179,272 @@ const ASK_LABEL = "Ask about your calls";
 const CHATS_HEADING = "Your chats";
 const NO_CHATS_YET = "Nothing yet. Ask about one of your calls.";
 
+function ChatThreadsSection({ collapsed }: { collapsed: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const t = useT();
+  const {
+    threads,
+    activeThreadId,
+    createThread,
+    switchThread,
+    pinThread,
+    archiveThread,
+    renameThread,
+    isNewThread,
+  } = useChatThreads(undefined, CHAT_STORAGE_KEY, undefined, {
+    autoCreate: false,
+    restoreActiveThread: false,
+  });
+  const { workingThreadIds, observedThreadStarts } =
+    useAgentChatRunningThreads();
+
+  const localMineRows = ownDraftRows({
+    threads,
+    isNewThread,
+    observedThreadStarts,
+  });
+  const history = useOwnershipChatHistory({
+    getThreadUrl: (threadId) => appPath(chatThreadPath(threadId)),
+    activeId:
+      threadIdFromPath(location.pathname) ??
+      activeThreadId ??
+      persistedActiveThreadId(),
+    localMineRows,
+    pinned: { label: t("chat.pinned") },
+    mutations: {
+      pin: pinThread,
+      rename: renameThread,
+      archive: archiveThread,
+    },
+    onMutationFailed: (kind) => {
+      if (kind === "archive") toast.error(t("chat.archiveFailed"));
+      if (kind === "rename") toast.error(t("chat.renameFailed"));
+    },
+    decorateItem: (item, row) => {
+      const title = row.title || row.preview || t("chat.untitledChat");
+      return {
+        ...item,
+        title: (
+          <ThreadHistoryTitle
+            title={title}
+            running={workingThreadIds.has(row.id)}
+          />
+        ),
+      };
+    },
+  });
+  const sections = history.sections.map((section) => ({
+    ...section,
+    ...(section.id === "mine"
+      ? {
+          label: CHATS_HEADING,
+          emptyLabel: section.emptyLabel ? NO_CHATS_YET : undefined,
+        }
+      : {}),
+    items: section.items.filter(
+      (item) =>
+        !history.findMine(item.id)?.title?.startsWith(AUTOMATION_RUN_PREFIX),
+    ),
+  }));
+  const displayedActiveThreadId =
+    threadIdFromPath(location.pathname) ??
+    activeThreadId ??
+    persistedActiveThreadId();
+
+  function openThread(threadId: string, options?: { isNew?: boolean }) {
+    switchThread(threadId);
+    persistActiveThreadId(threadId);
+    if (options?.isNew) {
+      window.dispatchEvent(
+        new CustomEvent("agent-chat:open-thread", {
+          detail: { threadId, newThread: true },
+        }),
+      );
+    }
+    navigateWithAgentChatViewTransition(navigate, chatThreadPath(threadId));
+    if (options?.isNew) return;
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(
+        new CustomEvent("agent-chat:open-thread", {
+          detail: { threadId, newThread: false },
+        }),
+      );
+    });
+  }
+
+  async function handleNewChat() {
+    const threadId = await createThread();
+    if (threadId) openThread(threadId, { isNew: true });
+  }
+
+  const newChatButton = (
+    <button
+      type="button"
+      onClick={() => void handleNewChat()}
+      className={cn(
+        "flex items-center text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        collapsed
+          ? "size-8 justify-center rounded-md"
+          : "h-8 w-full gap-3 rounded-lg px-3 text-sm font-medium",
+      )}
+      aria-label={collapsed ? ASK_LABEL : undefined}
+    >
+      <IconMessageCircle className="size-4 shrink-0" strokeWidth={1.8} />
+      <span className={collapsed ? "sr-only" : "truncate"}>{ASK_LABEL}</span>
+    </button>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{newChatButton}</TooltipTrigger>
+        <TooltipContent side="right">{ASK_LABEL}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="px-2 pb-3">{newChatButton}</div>
+      <OwnershipChatHistoryRail
+        {...history}
+        sections={sections}
+        onNewChat={() => void handleNewChat()}
+        showNewChat={false}
+        activeId={displayedActiveThreadId}
+        onSelect={openThread}
+        onDelete={async (threadId) => {
+          const wasActive =
+            threadId === activeThreadId ||
+            threadId === persistedActiveThreadId();
+          const archived = await history.listProps.onDelete?.(threadId);
+          if (archived && wasActive) await handleNewChat();
+        }}
+        renameMaxLength={160}
+        labels={{
+          options: (item) =>
+            t("chat.optionsFor", { title: item.titleText ?? "" }),
+          renameInput: (item) =>
+            t("chat.renameThread", { title: item.titleText ?? "" }),
+          rename: t("chat.renameChat"),
+          pin: t("chat.pinChat"),
+          unpin: t("chat.unpinChat"),
+          delete: t("chat.archiveChat"),
+        }}
+        railLabels={{
+          newChat: ASK_LABEL,
+        }}
+        className="chat-sidebar-history min-h-0 flex-1"
+        listClassName="pb-4"
+      />
+    </div>
+  );
+}
+
+export function Sidebar({
+  collapsed = false,
+  collapsible = true,
+  onCollapsedChange,
+}: SidebarProps) {
+  const t = useT();
+  const ToggleIcon = collapsed
+    ? IconLayoutSidebarLeftExpand
+    : IconLayoutSidebarLeftCollapse;
+  const collapseButton = collapsible ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onCollapsedChange?.(!collapsed)}
+          className="flex size-8 shrink-0 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          aria-label={
+            collapsed
+              ? t("navigation.expandSidebar")
+              : t("navigation.collapseSidebar")
+          }
+        >
+          <ToggleIcon className="size-4" strokeWidth={1.8} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {collapsed
+          ? t("navigation.expandSidebar")
+          : t("navigation.collapseSidebar")}
+      </TooltipContent>
+    </Tooltip>
+  ) : null;
+
+  return (
+    <aside
+      data-collapsed={collapsed ? "true" : "false"}
+      className={cn(
+        "flex h-full min-w-0 shrink-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out",
+        collapsed ? "w-12" : "w-full",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-14 shrink-0 items-center",
+          collapsed ? "justify-center px-1" : "gap-1 px-3",
+        )}
+      >
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                to={MEETINGS_PATH}
+                aria-label={APP_TITLE}
+                className="flex size-8 items-center justify-center rounded outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              >
+                <BrandMark />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">{APP_TITLE}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <>
+            <Link
+              to={MEETINGS_PATH}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            >
+              <BrandMark />
+              <span className="truncate text-sm font-semibold text-sidebar-accent-foreground">
+                {APP_TITLE}
+              </span>
+            </Link>
+          </>
+        )}
+      </div>
+
+      <nav
+        aria-label={t("navigation.navigation")}
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          collapsed ? "items-center gap-1 px-1 py-2" : "pt-1",
+        )}
+      >
+        <NavLink
+          collapsed={collapsed}
+          to={MEETINGS_PATH}
+          label="Calls"
+          icon={IconCalendarEvent}
+        />
+        <ChatThreadsSection collapsed={collapsed} />
+      </nav>
+
+      <div className="mt-auto shrink-0 border-t border-sidebar-border p-2">
+        <div
+          className={cn(
+            collapsed
+              ? "flex flex-col items-center gap-1"
+              : "flex items-center gap-0.5",
+          )}
+        >
+          <AccountMenu collapsed={collapsed} />
+          {collapseButton}
+        </div>
+      </div>
+    </aside>
+  );
+}
