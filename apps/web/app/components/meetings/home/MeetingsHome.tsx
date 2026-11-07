@@ -204,3 +204,197 @@ function HowItWorks() {
   );
 }
 
+function Row({
+  to,
+  title,
+  sentence,
+  action,
+  live = false,
+}: {
+  to: string;
+  title: string;
+  sentence: string;
+  action: string;
+  live?: boolean;
+}) {
+  return (
+    <li className="border-b last:border-b-0">
+      <Link
+        to={to}
+        className="group -mx-3 flex flex-col gap-1 rounded-md px-3 py-3.5 transition-colors hover:bg-muted/60 sm:flex-row sm:items-center sm:gap-6"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] leading-6 font-medium [overflow-wrap:anywhere]">
+            {title}
+          </span>
+          <span className="flex items-center gap-2 text-sm leading-[22px] text-muted-foreground">
+            {live ? <LiveBars /> : null}
+            <span className={live ? "font-medium text-live" : undefined}>
+              {sentence}
+            </span>
+          </span>
+        </span>
+        <span className="shrink-0 text-sm font-medium underline-offset-4 group-hover:underline">
+          {action}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function meetingRow(meeting: ListedMeeting) {
+  const status = statusSentence(meeting);
+  if (meeting.status === "ended") {
+    return {
+      sentence: `${status} ${outcomeSentence(meeting.notes !== null, meeting.waitingQuestions)}`,
+      action: meeting.notes === null ? "Open this call" : "Read the notes",
+    };
+  }
+  if (meeting.status === "live") {
+    return {
+      sentence: meeting.waitingQuestions
+        ? `${status} ${plural(meeting.waitingQuestions, "question")} for you.`
+        : status,
+      action: "Follow this call",
+    };
+  }
+  return {
+    sentence: status,
+    action: wasMissed(meeting) ? "Choose a new time" : "Review this call",
+  };
+}
+
+function usePageCount() {
+  const [count, setCount] = useState(1);
+  return {
+    pages: Array.from({ length: count }, (_, page) => page),
+    showMore: () => setCount((current) => current + 1),
+  };
+}
+
+function MoreButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <ActionRow className="mt-4">
+      <Button variant="outline" onClick={onClick}>
+        {label}
+      </Button>
+    </ActionRow>
+  );
+}
+
+function MeetingPages({
+  view,
+  moreLabel,
+  loadingLabel,
+}: {
+  view: MeetingView;
+  moreLabel: string;
+  loadingLabel: string;
+}) {
+  const { pages, showMore } = usePageCount();
+  return (
+    <>
+      {pages.map((page) => (
+        <MeetingRows
+          key={page}
+          view={view}
+          page={page}
+          isLast={page === pages.length - 1}
+          onShowMore={showMore}
+          moreLabel={moreLabel}
+          loadingLabel={loadingLabel}
+        />
+      ))}
+    </>
+  );
+}
+
+function MeetingRows({
+  view,
+  page,
+  isLast,
+  onShowMore,
+  moreLabel,
+  loadingLabel,
+}: {
+  view: MeetingView;
+  page: number;
+  isLast: boolean;
+  onShowMore: () => void;
+  moreLabel: string;
+  loadingLabel: string;
+}) {
+  const { data } = useActionQuery("list-meetings", meetingPage(view, page));
+  if (!data) return <LoadingNote>{loadingLabel}</LoadingNote>;
+  return (
+    <>
+      <ul className="border-b last:border-b-0">
+        {data.meetings.map((meeting) => (
+          <Row
+            key={meeting.id}
+            to={meetingPath(meeting.id)}
+            title={meeting.title}
+            live={meeting.status === "live"}
+            {...meetingRow(meeting)}
+          />
+        ))}
+      </ul>
+      {isLast && data.hasMore ? (
+        <MoreButton label={moreLabel} onClick={onShowMore} />
+      ) : null}
+    </>
+  );
+}
+
+function FollowUpPages() {
+  const { pages, showMore } = usePageCount();
+  return (
+    <>
+      {pages.map((page) => (
+        <FollowUpRows
+          key={page}
+          page={page}
+          isLast={page === pages.length - 1}
+          onShowMore={showMore}
+        />
+      ))}
+    </>
+  );
+}
+
+function FollowUpRows({
+  page,
+  isLast,
+  onShowMore,
+}: {
+  page: number;
+  isLast: boolean;
+  onShowMore: () => void;
+}) {
+  const { data } = useActionQuery("list-follow-ups", followUpPage(page));
+  if (!data) return <LoadingNote>Loading more questions.</LoadingNote>;
+  return (
+    <>
+      <ul className="border-b last:border-b-0">
+        {data.followUps.map((followUp) => (
+          <Row
+            key={followUp.id}
+            to={`${meetingPath(followUp.meetingId)}?tab=questions`}
+            title={`${followUp.askedBy} asked: ${followUp.body}`}
+            sentence={`From ${followUp.meetingTitle}, ${whenPhrase(followUp.createdAt)}.`}
+            action="Write a reply"
+          />
+        ))}
+      </ul>
+      {isLast && data.hasMore ? (
+        <MoreButton label="Show more questions" onClick={onShowMore} />
+      ) : null}
+    </>
+  );
+}
