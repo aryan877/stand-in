@@ -70,3 +70,105 @@ export function toLocalInput(iso: string) {
 
 export const fromLocalInput = (value: string) => new Date(value).toISOString();
 
+export function nextHour() {
+  const date = new Date();
+  date.setHours(date.getHours() + 1, 0, 0, 0);
+  return date.toISOString();
+}
+
+type MeetingTimes = Pick<
+  Meeting,
+  "status" | "startsAt" | "startedAt" | "endedAt" | "createdAt"
+>;
+
+export const startOf = (meeting: MeetingTimes) =>
+  meeting.startsAt ?? meeting.startedAt ?? meeting.createdAt;
+
+export const plural = (count: number, word: string) =>
+  `${count} ${word}${count === 1 ? "" : "s"}`;
+
+export function whenPhrase(iso: string, now = new Date()) {
+  const day = dayLabel(iso, now);
+  const relative = ["Today", "Tomorrow", "Yesterday"].includes(day);
+  return `${relative ? day.toLowerCase() : `on ${day}`} at ${timeOf(iso)}`;
+}
+
+export const wasMissed = (meeting: MeetingTimes, now = new Date()) =>
+  meeting.status === "draft" &&
+  Date.parse(startOf(meeting)) + JOIN_LATE_MS < now.getTime();
+
+export const someoneElseSpoke = (
+  transcript: Pick<TranscriptSegment, "speaker">[],
+) => transcript.some((line) => line.speaker !== STAND_IN_SPEAKER);
+
+export function refreshEvery(
+  meeting: MeetingTimes & Pick<Meeting, "notes">,
+  heardSomeone: boolean,
+  now = new Date(),
+): number | false {
+  if (meeting.status === "live") return POLL_MS;
+  if (meeting.status === "ended") {
+    const ended = Date.parse(meeting.endedAt ?? startOf(meeting));
+    const notesDue =
+      meeting.notes === null &&
+      heardSomeone &&
+      now.getTime() - ended < NOTES_WAIT_MS;
+    return notesDue ? POLL_MS : false;
+  }
+  const opensIn = Date.parse(startOf(meeting)) - JOIN_EARLY_MS - now.getTime();
+  if (opensIn > 0) return Math.min(Math.max(opensIn, POLL_MS), DAY_MS);
+  return wasMissed(meeting, now) ? false : POLL_MS;
+}
+
+export function statusSentence(meeting: MeetingTimes, now = new Date()) {
+  const start = startOf(meeting);
+  if (meeting.status === "live") return "Stand-in is in this call now.";
+  if (meeting.status === "ended") {
+    return `Finished ${whenPhrase(meeting.endedAt ?? start, now)}.`;
+  }
+  if (wasMissed(meeting, now)) {
+    return `Missed. Stand-in did not join ${whenPhrase(start, now)}.`;
+  }
+  if (Date.parse(start) <= now.getTime()) {
+    return "Starting now. Stand-in should join within a minute.";
+  }
+  return `Scheduled. Stand-in joins ${whenPhrase(start, now)}.`;
+}
+
+export function outcomeSentence(hasNotes: boolean, waitingQuestions: number) {
+  const notes = hasNotes ? "Notes ready" : "Notes not written yet";
+  return waitingQuestions
+    ? `${notes}, ${plural(waitingQuestions, "question")} for you.`
+    : `${notes}.`;
+}
+
+export type NoteBlock =
+  | { kind: "heading"; text: string }
+  | { kind: "paragraph"; text: string }
+  | { kind: "bullets"; items: string[] };
+
+const BULLET = /^\s*[-*•]\s+/;
+const MAX_HEADING_LENGTH = 60;
+
+export function parseNotes(text: string) {
+  const blocks: NoteBlock[] = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (BULLET.test(line)) {
+      const item = line.replace(BULLET, "");
+      const last = blocks[blocks.length - 1];
+      if (last?.kind === "bullets") last.items.push(item);
+      else blocks.push({ kind: "bullets", items: [item] });
+      continue;
+    }
+    const clean = line.replace(/^#+\s*/, "");
+    const heading = clean.length <= MAX_HEADING_LENGTH && !/[.!?]$/.test(clean);
+    blocks.push(
+      heading
+        ? { kind: "heading", text: clean.replace(/:$/, "") }
+        : { kind: "paragraph", text: clean },
+    );
+  }
+  return blocks;
+}
