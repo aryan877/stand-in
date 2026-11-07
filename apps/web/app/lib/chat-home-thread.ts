@@ -16,3 +16,64 @@ function createChatThreadId(): string {
   }`;
 }
 
+export function getChatHomeThreadId(): string {
+  const create = () => {
+    const id = createChatThreadId();
+    markClientDraftThread(id);
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(
+          CHAT_HOME_THREAD_STORAGE_KEY,
+          JSON.stringify({
+            id,
+            issuedAt: Date.now(),
+          } satisfies PendingChatHomeThread),
+        );
+        // coercion-ok: sessionStorage is optional startup deduplication; a fresh id remains valid when unavailable.
+      } catch {
+        // Session storage can be unavailable in restricted browser contexts.
+      }
+    }
+    return id;
+  };
+
+  if (typeof window === "undefined") return create();
+
+  try {
+    const raw = window.sessionStorage.getItem(CHAT_HOME_THREAD_STORAGE_KEY);
+    if (raw) {
+      const pending = JSON.parse(raw) as Partial<PendingChatHomeThread>;
+      if (
+        typeof pending.id === "string" &&
+        pending.id.startsWith("chat-") &&
+        typeof pending.issuedAt === "number" &&
+        Date.now() - pending.issuedAt <= CHAT_HOME_THREAD_TTL_MS
+      ) {
+        return pending.id;
+      }
+    }
+    // coercion-ok: sessionStorage is optional startup deduplication; a fresh id remains valid when unavailable.
+  } catch {
+    // Fall through to a fresh id when the stored handoff cannot be read.
+  }
+
+  return create();
+}
+
+export function consumeChatHomeThreadId(threadId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = window.sessionStorage.getItem(CHAT_HOME_THREAD_STORAGE_KEY);
+    window.sessionStorage.removeItem(CHAT_HOME_THREAD_STORAGE_KEY);
+    if (!raw) return false;
+    const pending = JSON.parse(raw) as Partial<PendingChatHomeThread>;
+    return (
+      pending.id === threadId &&
+      typeof pending.issuedAt === "number" &&
+      Date.now() - pending.issuedAt <= CHAT_HOME_THREAD_TTL_MS
+    );
+  } catch {
+    // coercion-ok: sessionStorage is optional lifecycle attribution; the chat remains valid when unavailable.
+    return false;
+  }
+}
