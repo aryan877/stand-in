@@ -72,3 +72,49 @@ export function LiveView({ detail }: { detail: MeetingDetail }) {
   );
 }
 
+function EndCallButton({ meetingId }: { meetingId: string }) {
+  const finish = useActionMutation("finish-meeting");
+  return (
+    <Button
+      size="sm"
+      disabled={finish.isPending}
+      onClick={() => {
+        if (window.confirm("End this call? Stand-in will leave right away."))
+          finish.mutate({ id: meetingId });
+      }}
+    >
+      {finish.isPending ? "Ending this call" : "End this call"}
+    </Button>
+  );
+}
+
+function LiveTranscript({ detail }: { detail: MeetingDetail }) {
+  const { meeting, transcript, questions } = detail;
+  const scroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scroller.current?.scrollTo({
+      top: scroller.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [transcript.length, questions.length]);
+
+  return (
+    <div
+      ref={scroller}
+      className="h-[calc(100dvh-23rem)] min-h-64 overflow-y-auto rounded-xl border p-5"
+    >
+      {transcript.length ? (
+        <Transcript
+          lines={transcript}
+          meeting={meeting}
+          questions={questions}
+        />
+      ) : (
+        <p className="text-[15px] text-muted-foreground">
+          Nobody has spoken yet. New lines appear here as people speak.
+        </p>
+      )}
+    </div>
+  );
+}

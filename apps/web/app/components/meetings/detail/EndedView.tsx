@@ -137,3 +137,209 @@ function Recap({
   );
 }
 
+function NextStep({
+  active,
+  waiting,
+  toReview,
+  notesReady,
+  onSelect,
+}: {
+  active: TabId;
+  waiting: number;
+  toReview: number;
+  notesReady: boolean;
+  onSelect: (tab: TabId) => void;
+}) {
+  const step =
+    waiting > 0
+      ? {
+          tab: "questions" as const,
+          label: `Reply to ${plural(waiting, "question")}`,
+        }
+      : toReview > 0
+        ? {
+            tab: "todos" as const,
+            label: `Review ${plural(toReview, "to-do")}`,
+          }
+        : null;
+
+  if (step) {
+    if (step.tab === active) return null;
+    return (
+      <ActionRow>
+        <Button onClick={() => onSelect(step.tab)}>{step.label}</Button>
+      </ActionRow>
+    );
+  }
+  if (!notesReady) return null;
+  return (
+    <ActionRow>
+      <Button asChild>
+        <Link to={`${MEETINGS_PATH}/new`}>Schedule a call</Link>
+      </Button>
+    </ActionRow>
+  );
+}
+
+function ToDos({
+  items,
+  notesReady,
+}: {
+  items: ActionItem[];
+  notesReady: boolean;
+}) {
+  if (!items.length) {
+    return (
+      <EmptyNote>
+        {notesReady
+          ? "Nobody agreed to do anything on this call."
+          : "To-dos appear here when the notes are ready."}
+      </EmptyNote>
+    );
+  }
+  return (
+    <div>
+      <Hint>
+        Stand-in listed these from the call. Approve the ones you want to keep
+        and remove the rest. Nothing is sent to anyone.
+      </Hint>
+      <ul className="mt-3 divide-y border-y">
+        {items.map((item) => (
+          <ToDoRow key={item.id} item={item} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const TO_DO_STATE: Record<ActionItem["status"], string> = {
+  proposed: "Waiting for you to approve it.",
+  approved: "You approved this.",
+  dismissed: "You removed this.",
+};
+
+function ToDoRow({ item }: { item: ActionItem }) {
+  const update = useActionMutation("update-action-item");
+  const dismissed = item.status === "dismissed";
+  const change = (event: "approve" | "dismiss" | "reopen") =>
+    update.mutate({ id: item.id, event });
+
+  return (
+    <li className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className={cn("min-w-0 flex-1", dismissed && "opacity-60")}>
+        <p
+          className={cn(
+            "text-[15px] leading-6 [overflow-wrap:anywhere]",
+            dismissed && "line-through",
+          )}
+        >
+          {item.body}
+        </p>
+        <p className="text-sm leading-[22px] text-muted-foreground">
+          {item.assignee ? `For ${item.assignee}. ` : ""}
+          {TO_DO_STATE[item.status]}
+        </p>
+        <ActionError
+          error={update.error}
+          fallback="Couldn't update this to-do."
+        />
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {item.status === "proposed" ? (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={update.isPending}
+              onClick={() => change("approve")}
+            >
+              Approve to-do
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={update.isPending}
+              onClick={() => change("dismiss")}
+            >
+              Remove to-do
+            </Button>
+          </>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={update.isPending}
+            onClick={() => change("reopen")}
+          >
+            {dismissed ? "Put to-do back" : "Undo approval"}
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function CopyReply({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="mt-2"
+      onClick={() =>
+        void navigator.clipboard.writeText(text).then(() => setCopied(true))
+      }
+    >
+      {copied ? "Copied" : "Copy reply"}
+    </Button>
+  );
+}
+
+function Questions({
+  waiting,
+  answered,
+}: {
+  waiting: Question[];
+  answered: Question[];
+}) {
+  if (!waiting.length && !answered.length) {
+    return <EmptyNote>Nobody left a question for you on this call.</EmptyNote>;
+  }
+  return (
+    <div className="space-y-8">
+      {waiting.length ? (
+        <div>
+          <Hint>
+            Stand-in told these people you would reply later. Your reply is
+            saved here. Stand-in does not send it to them.
+          </Hint>
+          <div className="mt-3 space-y-3">
+            {waiting.map((question) => (
+              <QuestionCard key={question.id} question={question} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {answered.length ? (
+        <Section
+          title="Replies you saved"
+          hint="Stand-in doesn't send these. Copy one and send it yourself."
+        >
+          <ul className="divide-y border-y">
+            {answered.map((question) => (
+              <li key={question.id} className="py-3.5">
+                <p className="text-sm text-muted-foreground">
+                  {question.askedBy} asked: {question.body}
+                </p>
+                <p className="mt-0.5 text-[15px] leading-6">
+                  You replied: {question.answer}
+                </p>
+                {question.answer ? <CopyReply text={question.answer} /> : null}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+    </div>
+  );
+}

@@ -271,3 +271,125 @@ function CanSay({ meeting }: { meeting: Meeting }) {
   );
 }
 
+function Written({ text, empty }: { text: string; empty: string }) {
+  const trimmed = text.trim();
+  if (!trimmed) return <span className="text-muted-foreground">{empty}</span>;
+  return <span className="whitespace-pre-line">{trimmed}</span>;
+}
+
+function CallFacts({ meeting }: { meeting: Meeting }) {
+  const start = startOf(meeting);
+  return (
+    <section className="rounded-xl border px-5 py-4">
+      <dl className="grid gap-x-8 gap-y-4 @xl:grid-cols-2 @3xl:grid-cols-4">
+        <Fact label="Google Meet link" className="@3xl:col-span-2">
+          <a
+            href={meeting.meetUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4"
+          >
+            {meeting.meetUrl}
+          </a>
+        </Fact>
+        <Fact label="Date and start time">
+          {dayLabel(start)} at {timeOf(start)}
+        </Fact>
+        <Fact label="Length of the call">
+          {meeting.durationMinutes} minutes
+        </Fact>
+        <Fact label="Stand-in speaks for" className="@3xl:col-span-2">
+          {meeting.ownerName}
+        </Fact>
+        <Fact label="People who knock" className="@3xl:col-span-2">
+          {meeting.letPeopleIn
+            ? "Stand-in lets them in."
+            : "Stand-in leaves them waiting."}
+        </Fact>
+      </dl>
+    </section>
+  );
+}
+
+const formOf = (meeting: Meeting): MeetingForm => ({
+  title: meeting.title,
+  meetUrl: meeting.meetUrl,
+  ownerName: meeting.ownerName,
+  startsAt: startOf(meeting),
+  durationMinutes: meeting.durationMinutes,
+  agenda: meeting.agenda,
+  mayShare: meeting.mayShare,
+  mustAsk: meeting.mustAsk,
+  letPeopleIn: meeting.letPeopleIn,
+});
+
+const sameForm = (a: MeetingForm, b: MeetingForm) =>
+  (Object.keys(a) as (keyof MeetingForm)[]).every((key) => a[key] === b[key]);
+
+function EditMeeting({
+  meeting,
+  onSaved,
+  onCancel,
+}: {
+  meeting: Meeting;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const update = useActionMutation("update-meeting");
+  const [base, setBase] = useState(() => formOf(meeting));
+  const [form, setForm] = useState(base);
+  const [problem, setProblem] = useState<string | null>(null);
+  const latest = formOf(meeting);
+  const changedElsewhere =
+    !sameForm(base, latest) && !update.isPending && !update.isSuccess;
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const found = briefingProblem(
+      form,
+      form.startsAt !== base.startsAt || wasMissed(meeting),
+    );
+    setProblem(found);
+    if (found) return;
+    const { meetUrl: _unchangeable, ...fields } = form;
+    update.mutate({ id: meeting.id, ...fields }, { onSuccess: onSaved });
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      {changedElsewhere ? (
+        <AgentChangedNotice
+          onReload={() => {
+            setBase(latest);
+            setForm(latest);
+          }}
+        />
+      ) : null}
+      <MeetingFields
+        linkLocked
+        value={form}
+        onChange={(patch) => {
+          setProblem(null);
+          setForm((current) => ({ ...current, ...patch }));
+        }}
+      />
+      <ActionError
+        problem={problem}
+        error={update.error}
+        fallback="Couldn't save your changes."
+      />
+      <ActionRow>
+        <Button
+          type="submit"
+          size="lg"
+          disabled={update.isPending || changedElsewhere}
+        >
+          {update.isPending ? "Saving" : "Save changes"}
+        </Button>
+        <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
+          Discard changes
+        </Button>
+      </ActionRow>
+    </form>
+  );
+}

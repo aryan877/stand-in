@@ -83,3 +83,32 @@ export function MeetingPage({ id }: { id: string }) {
   );
 }
 
+function DeleteMeetingButton({ meeting }: { meeting: Meeting }) {
+  const navigate = useNavigate();
+  const remove = useActionMutation("delete-meeting");
+
+  return (
+    <div className="space-y-2">
+      <Button
+        variant="outline-destructive"
+        disabled={remove.isPending}
+        className="w-full sm:w-auto"
+        onClick={() => {
+          if (
+            !window.confirm(
+              "Delete this call? Its notes, to-dos, questions and transcript will be gone for good.",
+            )
+          )
+            return;
+          remove.mutate(
+            { id: meeting.id },
+            { onSuccess: () => navigate(MEETINGS_PATH) },
+          );
+        }}
+      >
+        Delete this call
+      </Button>
+      <ActionError error={remove.error} fallback="Couldn't delete this call." />
+    </div>
+  );
+}
