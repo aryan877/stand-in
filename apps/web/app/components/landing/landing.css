@@ -19,3 +19,16 @@
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .landing-reveal {
+      animation: landing-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 28%;
+    }
+  }
+
+  .landing-pin {
+    animation: landing-pin 2.6s ease-out infinite;
+  }
+}

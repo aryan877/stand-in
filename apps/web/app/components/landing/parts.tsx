@@ -213,3 +213,39 @@ export function Section({
   );
 }
 
+export function LinkButton({
+  href,
+  children,
+  ...props
+}: Omit<ComponentProps<typeof Button>, "asChild"> & {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <Button asChild {...props}>
+      <a href={href}>{children}</a>
+    </Button>
+  );
+}
+
+export function CreateAccountLink({ size }: { size: "sm" | "lg" }) {
+  return (
+    <LinkButton href="/signup" size={size}>
+      Create your account
+    </LinkButton>
+  );
+}
+
+export function SignInLink({
+  size,
+  variant,
+}: {
+  size: "sm" | "lg";
+  variant: "ghost" | "outline";
+}) {
+  return (
+    <LinkButton href="/login" variant={variant} size={size}>
+      Sign in
+    </LinkButton>
+  );
+}
