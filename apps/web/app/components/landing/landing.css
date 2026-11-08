@@ -9,3 +9,13 @@
   }
 }
 
+@keyframes landing-pin {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--foreground) / 0.28);
+  }
+  60% {
+    box-shadow: 0 0 0 7px hsl(var(--foreground) / 0);
+  }
+}
+

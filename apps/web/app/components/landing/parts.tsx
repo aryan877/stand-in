@@ -178,3 +178,38 @@ export function Shot({
   );
 }
 
+export function Reveal({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return <div className={cn("landing-reveal", className)}>{children}</div>;
+}
+
+export function Section({
+  id,
+  band,
+  className,
+  children,
+}: {
+  id?: string;
+  band?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      className={cn(
+        "scroll-mt-16 border-t px-6 py-20 max-sm:px-4 md:py-28",
+        band && "bg-muted",
+        className,
+      )}
+    >
+      <div className={CONTAINER}>{children}</div>
+    </section>
+  );
+}
+
