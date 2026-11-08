@@ -6,3 +6,12 @@ export function meta() {
   return [{ title: "Database" }];
 }
 
+export default function DatabasePage() {
+  const t = useT();
+  useSetPageTitle(t("pages.databaseTitle"));
+  return (
+    <div className="h-full">
+      <DbAdminPage />
+    </div>
+  );
+}

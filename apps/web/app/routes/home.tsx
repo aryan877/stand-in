@@ -7,3 +7,6 @@ export function meta() {
   return [{ title: APP_TITLE }];
 }
 
+export default function HomeRoute() {
+  return <Navigate to={MEETINGS_PATH} replace />;
+}
