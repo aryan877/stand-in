@@ -104,3 +104,19 @@ Writes return `{ id }`, declare an `outputSchema`, and carry `mcpAnnotations` wh
 - UI feedback targets 100 ms and never exceeds 400 ms. App data flows through actions.
 - Never fabricate. Report failures, and confirm writes by reading the row or screen.
 
+## Navigation
+
+`navigation` application state holds the view, the path and the browser's `timeZone`: `meetings` at `/meetings` plus `meetingId` at `/meetings/<id>`, `chat` at `/chat` and `/chat/<threadId>`. The agent uses `navigate` to move the UI and `view-screen` for a fresh read. `<current-screen>` already has the navigation and, on a meeting page, that meeting's id, title, status and counts, never its transcript.
+
+## Skills
+
+Search with `rg --hidden --follow`, and read the linked guide before deeper work.
+
+- Product: `.agents/skills/meetings/SKILL.md`
+- Features: `.agents/skills/build-an-app/SKILL.md`, `.agents/skills/adding-a-feature/SKILL.md`
+- Data and integrations: `.agents/skills/actions/SKILL.md`, `.agents/skills/storing-data/SKILL.md`, `.agents/skills/security/SKILL.md`, `.agents/skills/secrets/SKILL.md`, `.agents/skills/sharing/SKILL.md`
+- UI: `.agents/skills/frontend-design/SKILL.md`, `.agents/skills/shadcn-ui/SKILL.md`, `.agents/skills/client-side-routing/SKILL.md`
+- Agent context and workflows: `.agents/skills/context-awareness/SKILL.md`, `.agents/skills/real-time-sync/SKILL.md`, `.agents/skills/reliable-mutations/SKILL.md`, `.agents/skills/performance/SKILL.md`, `.agents/skills/delegate-to-agent/SKILL.md`
+- Framework: `.agents/skills/agent-native-docs/SKILL.md`, `.agents/skills/agent-native-toolkit/SKILL.md`, `.agents/skills/customizing-agent-native/SKILL.md`
+
+Framework docs are local: `bun --bun run action docs-search --query "<topic>"`, `--slug "<slug>"` or `--list`.

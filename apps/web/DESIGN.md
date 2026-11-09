@@ -49,3 +49,9 @@ your behalf, so the interface stays plain, exact and quiet.
 - Every control says the whole action in words. No icon-only controls and no
   "more" menus.
 
+## Copy
+
+- Plain words, short sentences, no dashes, no counters like "01 / 03".
+- Name who acts: "Stand-in joins", "Maya can't answer that today".
+- Every status is a full sentence: "Scheduled. Stand-in joins today at 3:30 PM."
+- Never promise more than the product does.

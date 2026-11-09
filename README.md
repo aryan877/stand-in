@@ -238,3 +238,54 @@ Click **Schedule a call**, paste a Google Meet link, pick the start time, and wr
 
 </details>
 
+## Checks
+
+```sh
+bun run typecheck
+bun run test
+```
+
+- 246 tests for the app: the store, the state machines, approvals, the responder, the notes automation and every action.
+- 30 tests for the extension: caption tracking, and the rules for admitting people and leaving.
+- `bun --bun run agent-native:doctor` in `apps/web` runs the framework's guards, such as owner-scoped queries and no hardcoded credentials.
+
+## Where things live
+
+| Path                                    | What lives there                                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------------------- |
+| `apps/web/actions/`                     | One small action per operation, shared by the screens, the agent and the extension |
+| `apps/web/server/meetings/responder.ts` | The live-call responder and its three tools                                        |
+| `apps/web/server/meetings/store.ts`     | Every database query, each scoped to the signed-in owner                           |
+| `apps/web/server/meetings/machines.ts`  | The meeting and to-do lifecycles                                                   |
+| `apps/web/server/meetings/`             | Events, the notes automation, approvals, notifications, the injection eval         |
+| `apps/web/.agents/skills/meetings/`     | How the agent briefs calls, prepares answers and writes notes                      |
+| `apps/web/app/components/meetings/`     | The screens: home, schedule form, briefing, live call, notes                       |
+| `apps/web/app/components/landing/`      | The public landing page                                                            |
+| `apps/extension/src/`                   | The Chrome extension: joining, captions, the voice, and when to leave              |
+
+`AGENTS.md` and `apps/web/AGENTS.md` have the full file map, the action table and the hard rules.
+
+## Swapping providers
+
+| Job                  | Where                                     | Default                                         |
+| -------------------- | ----------------------------------------- | ----------------------------------------------- |
+| Live call AI         | `apps/web/server/lib/providers/llm.ts`    | DeepSeek V4.1 Flash on OpenCode Go              |
+| Speech               | `apps/web/server/lib/providers/speech.ts` | One voice, Deepgram Aura-2 (Cora) on OpenRouter |
+| Chat and notes agent | `AGENT_ENGINE`, `AGENT_MODEL`             | DeepSeek V4.1 Flash on OpenCode Go              |
+
+## Honest limits
+
+- Google Meet only, in Chrome, on a computer that stays on during the call. The extension keeps the computer awake while a call is coming up.
+- Keep the Stand-in window visible during the call. Chrome stops updating hidden tabs, so captions stop reaching Stand-in if the window is fully covered.
+- It never uses your camera, and it never pretends to be you.
+- It relies on Meet's page layout and English captions, which Google can change.
+- Google's terms haven't been reviewed for this use.
+
+<br />
+
+<div align="center">
+
+Made by Aryan Kumar for the Builder.io Agent-Native Hackathon, November 2026.<br />
+Started from the Agent-Native chat template (`@agent-native/core` 0.226.0). Everything specific to Stand-in was written during the event.
+
+</div>
