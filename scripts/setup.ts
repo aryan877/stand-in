@@ -28,3 +28,38 @@ function readEnv() {
   );
 }
 
+function step(title: string, ok: boolean) {
+  if (ok) return;
+  console.error(`Failed: ${title}`);
+  process.exit(1);
+}
+
+requireCommand("psql", "Install PostgreSQL, for example: brew install postgresql@17");
+requireCommand("createdb", "Install PostgreSQL, for example: brew install postgresql@17");
+
+if (!existsSync(ENV_FILE)) copyFileSync(`${ENV_FILE}.example`, ENV_FILE);
+const env = readEnv();
+if (!env.BETTER_AUTH_SECRET) {
+  const secret = randomBytes(32).toString("hex");
+  writeFileSync(
+    ENV_FILE,
+    readFileSync(ENV_FILE, "utf8").replace(/^BETTER_AUTH_SECRET=.*$/m, `BETTER_AUTH_SECRET=${secret}`),
+  );
+}
+
+const url = new URL(env.DATABASE_URL ?? "postgresql://localhost:5432/standin");
+const database = url.pathname.slice(1);
+const server = ["-h", url.hostname, "-p", url.port || "5432"];
+step("reaching PostgreSQL. Is it running? Try: brew services start postgresql@17", run(["psql", ...server, "-d", "postgres", "-Atqc", "select 1"]));
+const exists = Bun.spawnSync(["psql", ...server, "-d", "postgres", "-Atc", `select 1 from pg_database where datname='${database}'`]).stdout.toString().trim();
+if (!exists) step(`creating database ${database}`, run(["createdb", ...server, database]));
+
+step("installing packages", run(["bun", "install"]));
+step("building the app and extension", run(["bun", "run", "build"]));
+step("setting up database tables", run(["bun", "--bun", "run", "migrate:production"], WEB));
+
+const missing = REQUIRED_KEYS.filter((key) => !readEnv()[key]);
+console.log("\nSetup finished.");
+if (missing.length) console.log(`Add these to ${ENV_FILE} before starting: ${missing.join(", ")}`);
+console.log("Start the app with: bun run start");
+console.log("Then load apps/extension/dist at chrome://extensions (see README).");
