@@ -145,3 +145,96 @@ The agent isn't bolted on. The screens, the chat agent, the Chrome extension and
 
 The one place the app calls a model outside the agent is the live-call responder, because a spoken reply can't wait for an agent run. Even there the model only picks a tool.
 
+## How a call flows
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor You
+    participant App as Stand-in app<br/>(Agent-Native actions)
+    participant Ext as Chrome extension
+    participant Meet as Google Meet
+
+    You->>App: create-meeting (link, time, answers, limits)
+    loop every 30 seconds
+        Ext->>App: due-meetings
+    end
+    Ext->>Meet: open the call, camera off, join
+    Ext->>App: start-meeting
+    App-->>Ext: queue the introduction
+    Ext->>Meet: "Hi, I'm Aryan's AI stand-in."
+    Meet-->>Ext: live captions
+    Ext->>App: add-transcript-line
+    Note over App: responder picks one of three tools
+    Ext->>App: next-utterance
+    Ext->>Meet: speak the line in one fixed voice
+    Ext->>App: finish-meeting
+    Note over App: meeting.ended, then the automation<br/>runs the agent to write notes
+    App-->>You: notification, notes, to-dos, questions
+```
+
+The extension does the joining, listening and speaking. The app decides what gets said. A Meet tab can only call the four live-call actions, and only for its own meeting.
+
+## Run it
+
+Stand-in runs on your own computer and joins calls from your own Chrome, so your computer has to be on with Chrome open when a call starts.
+
+**You need**
+
+- [Bun](https://bun.sh) 1.2 or newer
+- PostgreSQL 15 or newer, running on this computer (`brew install postgresql@17 && brew services start postgresql@17`)
+- Google Chrome, signed in to the Google account you use for Meet
+- An [OpenCode Go](https://opencode.ai) key for the AI, and an [OpenRouter](https://openrouter.ai) key for the voice
+
+**1. Set it up**
+
+```sh
+bun install
+bun run setup
+```
+
+This creates `apps/web/.env` with a new sign-in secret, creates the `standin` database, builds the app and the extension, and sets up the tables. It's safe to run again.
+
+**2. Add your two keys** to `apps/web/.env`
+
+```sh
+OPENAI_API_KEY=your-opencode-go-key
+OPENROUTER_VOICE_API_KEY=your-openrouter-key
+```
+
+`OPENAI_API_KEY` holds your OpenCode Go key. That's the name Agent-Native looks for on a self-hosted app. Stand-in's own code only sends it to OpenCode, so don't switch the engine to OpenAI in Settings. Leave `BETTER_AUTH_URL` unset when running on your own computer.
+
+**3. Start the app**
+
+```sh
+bun run start
+```
+
+Open http://localhost:3210 and create an account with your email and a password.
+
+**4. Add the Chrome extension**
+
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode**, top right.
+3. Click **Load unpacked** and choose the `apps/extension/dist` folder.
+
+**5. Send Stand-in to a call**
+
+Click **Schedule a call**, paste a Google Meet link, pick the start time, and write what Stand-in may say. Leave your computer on with Chrome open. It joins by itself, and the notes appear on the call's page when it ends.
+
+<details>
+<summary><b>If something goes wrong</b></summary>
+
+<br />
+
+| What you see                                | What to do                                                                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Setup can't reach PostgreSQL                | Start it: `brew services start postgresql@17`                                                                                       |
+| The page says the extension isn't connected | Reload the extension at `chrome://extensions`, then refresh the page. Use the same Chrome profile you're signed in to Stand-in with |
+| Nobody can get into your call               | If you host the call, turn on "Let people in who knock" when you schedule it                                                        |
+| Stand-in doesn't join                       | Check you're signed in to Stand-in in that Chrome profile, and that the call was scheduled for now or within the last 15 minutes    |
+| Stand-in waits in the lobby                 | If the call belongs to someone else, they need to admit it. It uses your Google account                                             |
+| Port 3210 is busy                           | Stop whatever is using it. The extension expects port 3210                                                                          |
+
+</details>
+

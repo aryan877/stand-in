@@ -38,3 +38,14 @@ your behalf, so the interface stays plain, exact and quiet.
   never nested.
 - The landing page follows the same tokens, with one dark product panel.
 
+## Controls
+
+- Use the shared `Button`. One `default` button per screen is the primary
+  action, and the rest are `outline` or `ghost`. Each row of to-dos stays
+  `outline`.
+- Heights are 36px for ordinary actions and 40px for page-level and form
+  actions, with `sm` (32px) inside rows and toolbars. Under 640px, action rows
+  stack full width.
+- Every control says the whole action in words. No icon-only controls and no
+  "more" menus.
+
