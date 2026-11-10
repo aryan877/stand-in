@@ -46,6 +46,8 @@ Built on **Agent-Native** by Builder.io, for the Agent-Native Hackathon.
 
 **https://standin.aryankumar.dev**
 
+Watch the demo: **https://clips.agent-native.com/r/atC6cT6QnURT**
+
 | Test login |                       |
 | ---------- | --------------------- |
 | Email      | `judge@standin.demo`  |
