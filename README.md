@@ -42,6 +42,25 @@ Built on **Agent-Native** by Builder.io, for the Agent-Native Hackathon.
 
 <br />
 
+## Try it live
+
+**https://standin.aryankumar.dev**
+
+| Test login |                       |
+| ---------- | --------------------- |
+| Email      | `judge@standin.demo`  |
+| Password   | `Judge-Stand-in-2026` |
+
+Or create your own account. Sign-up is open.
+
+The website handles everything except joining the call: scheduling, the agent writing your answers, the live page, notes, to-dos and questions. To send Stand-in into a real Google Meet, add the Chrome extension too:
+
+1. Download [`stand-in-extension.zip`](https://github.com/aryan877/stand-in/releases/latest/download/stand-in-extension.zip) and unzip it.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the unzipped folder.
+3. Sign in on the website in the same Chrome, schedule a call, and keep Chrome open at the start time.
+
+The extension joins from your own Chrome on purpose, so the computer has to be on when the call starts.
+
 ## The idea
 
 A lot of calls need you for two answers, and still cost you thirty minutes. You already know what you'd say. You could write it down tonight.
@@ -210,7 +229,7 @@ OPENROUTER_VOICE_API_KEY=your-openrouter-key
 bun run start
 ```
 
-Open http://localhost:3210 and create an account with your email and a password.
+Open http://localhost:3210 and create an account with your email and a password. The extension built by setup works with both your local app and the live site.
 
 **4. Add the Chrome extension**
 

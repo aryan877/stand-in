@@ -1,6 +1,9 @@
 import { cpSync, mkdirSync, readFileSync, watch, writeFileSync } from "node:fs";
 
-const appOrigins = (process.env.STAND_IN_APP_ORIGINS ?? "http://localhost:3210")
+const appOrigins = (
+  process.env.STAND_IN_APP_ORIGINS ??
+  "http://localhost:3210,https://standin.aryankumar.dev"
+)
   .split(",")
   .map((origin) => new URL(origin.trim()).origin);
 
