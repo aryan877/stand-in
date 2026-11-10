@@ -24,7 +24,7 @@ const NEEDED_QUESTIONS = [
     text: "Hey everyone! Aryan is the launch still on for Thursday.",
   },
   {
-    speaker: "EduRachana",
+    speaker: "Teammate",
     text: "Thanks, Aryan, who is writing the release notes.",
   },
 ];
